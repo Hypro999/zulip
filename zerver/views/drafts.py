@@ -1,5 +1,6 @@
 import time
-from typing import Any, Dict, List, Set
+from functools import wraps
+from typing import Any, Dict, List, Set, cast
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
@@ -13,6 +14,7 @@ from zerver.lib.request import REQ, has_request_variables
 from zerver.lib.response import json_error, json_success
 from zerver.lib.streams import access_stream_by_id
 from zerver.lib.timestamp import timestamp_to_datetime
+from zerver.lib.types import ViewFuncT
 from zerver.lib.validator import (
     check_dict_only,
     check_float,
@@ -85,11 +87,22 @@ def further_validated_draft_dict(draft_dict: Dict[str, Any],
         "last_edit_time": last_edit_time,
     }
 
+def draft_endpoint(view_func: ViewFuncT) -> ViewFuncT:
+    @wraps(view_func)
+    def draft_view_func(request: HttpRequest, user_profile: UserProfile,
+                        *args: object, **kwargs: object) -> HttpResponse:
+        if not user_profile.enable_drafts_synchronization:
+            return json_error(_("User has not enabled drafts syncing."))
+        return view_func(request, user_profile, *args, **kwargs)
+    return cast(ViewFuncT, draft_view_func)  # https://github.com/python/mypy/issues/1927
+
+@draft_endpoint
 def fetch_drafts(request: HttpRequest, user_profile: UserProfile) -> HttpResponse:
     user_drafts = Draft.objects.filter(user_profile=user_profile).order_by("last_edit_time")
     draft_dicts = [draft.to_dict() for draft in user_drafts]
     return json_success({"count": user_drafts.count(), "drafts": draft_dicts})
 
+@draft_endpoint
 @has_request_variables
 def create_drafts(request: HttpRequest, user_profile: UserProfile,
                   draft_dicts: List[Dict[str, Any]]=REQ("drafts",
@@ -110,6 +123,7 @@ def create_drafts(request: HttpRequest, user_profile: UserProfile,
     draft_ids = [draft_object.id for draft_object in created_draft_objects]
     return json_success({"ids": draft_ids})
 
+@draft_endpoint
 @has_request_variables
 def edit_draft(request: HttpRequest, user_profile: UserProfile, draft_id: int,
                draft_dict: Dict[str, Any]=REQ("draft", validator=draft_dict_validator),
@@ -128,6 +142,7 @@ def edit_draft(request: HttpRequest, user_profile: UserProfile, draft_id: int,
 
     return json_success()
 
+@draft_endpoint
 def delete_draft(request: HttpRequest, user_profile: UserProfile, draft_id: int) -> HttpResponse:
     try:
         draft_object = Draft.objects.get(id=draft_id, user_profile=user_profile)
