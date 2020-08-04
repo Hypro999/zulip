@@ -7955,6 +7955,51 @@ paths:
                         "msg": "",
                         "result": "success",
                       }
+  /settings/drafts:
+    patch:
+      operationId: update_draft_settings
+      tags: ["drafts", "users"]
+      description: |
+        Change a user's drafts-related settings.
+
+        `POST {{ api_url }}/v1/settings/drafts`
+      parameters:
+        - name: enable_syncing
+          in: query
+          description: |
+            A boolean parameter to control enabling/disabling syncing
+            drafts for the given user. When disabling syncing, all of
+            user's drafts will be deleted on the backend. However,
+            "draft deletion" events will not be sent to other clients
+            because the goal here is to dis-continue sync, not delete
+            all drafts.
+          schema:
+            type: boolean
+          example: true
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonSuccess"
+        "400":
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/JsonError"
+                  - additionalProperties: false
+                    properties:
+                      msg:
+                        type: string
+                example:
+                  {
+                    "code": "BAD_REQUEST",
+                    "msg": "enable_syncing is not a boolean",
+                    "result": "error",
+                  }
   /streams:
     get:
       operationId: get_streams

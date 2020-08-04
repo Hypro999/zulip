@@ -989,7 +989,7 @@ class OpenAPIAttributesTest(ZulipTestCase):
         """
         EXCLUDE = ["/real-time", "/register", "/events"]
         VALID_TAGS = ["users", "server_and_organizations", "authentication",
-                      "real_time_events", "streams", "messages", "users",
+                      "real_time_events", "streams", "messages", "drafts",
                       "webhooks"]
         paths = OpenAPISpec(OPENAPI_SPEC_PATH).openapi()["paths"]
         for path, path_item in paths.items():

@@ -182,6 +182,7 @@ from zerver.views.user_settings import (
     change_enter_sends,
     confirm_email_change,
     delete_avatar_backend,
+    json_change_draft_settings,
     json_change_notify_settings,
     json_change_settings,
     regenerate_api_key,
@@ -488,6 +489,8 @@ v1_api_and_json_patterns = [
               PATCH=json_change_settings),
     rest_path('settings/display',
               PATCH=update_display_settings_backend),
+    rest_path('settings/drafts',
+              PATCH=json_change_draft_settings),
     rest_path('settings/notifications',
               PATCH=json_change_notify_settings),
 
