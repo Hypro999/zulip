@@ -93,6 +93,13 @@ from zerver.lib.actions import (
     remove_members_from_user_group,
     try_update_realm_custom_profile_field,
 )
+from zerver.lib.drafts import (
+    do_create_drafts,
+    do_delete_draft,
+    do_disable_drafts_syncing,
+    do_edit_draft,
+    do_enable_drafts_syncing,
+)
 from zerver.lib.event_schema import (
     check_alert_words,
     check_attachment_add,
@@ -1957,3 +1964,53 @@ class SubscribeActionTest(BaseAction):
             events[0]['streams'][0]['message_retention_days'],
             10,
         )
+
+class DraftActionTest(BaseAction):
+    def test_draft_create_event(self) -> None:
+        do_enable_drafts_syncing(self.user_profile)
+        dummy_draft = {
+            "type": "draft",
+            "to": "",
+            "topic": "",
+            "content": "Sample draft content",
+            "timestamp": 1596820995
+        }
+        action = lambda: do_create_drafts([dummy_draft], self.user_profile)
+        self.verify_action(action)
+
+    def test_draft_edit_event(self) -> None:
+        do_enable_drafts_syncing(self.user_profile)
+        dummy_draft = {
+            "type": "draft",
+            "to": "",
+            "topic": "",
+            "content": "Sample draft content",
+            "timestamp": 1596820995
+        }
+        draft_id = do_create_drafts([dummy_draft], self.user_profile)[0].id
+        dummy_draft["content"] = "Some more sample draft content"
+        action = lambda: do_edit_draft(draft_id, dummy_draft, self.user_profile)
+        self.verify_action(action)
+
+    def test_draft_delete_event(self) -> None:
+        do_enable_drafts_syncing(self.user_profile)
+        dummy_draft = {
+            "type": "draft",
+            "to": "",
+            "topic": "",
+            "content": "Sample draft content",
+            "timestamp": 1596820995
+        }
+        draft_id = do_create_drafts([dummy_draft], self.user_profile)[0].id
+        action = lambda: do_delete_draft(draft_id, self.user_profile)
+        self.verify_action(action)
+
+    def test_enable_syncing_drafts(self) -> None:
+        do_disable_drafts_syncing(self.user_profile)
+        action = lambda: do_enable_drafts_syncing(self.user_profile)
+        self.verify_action(action)
+
+    def test_disable_syncing_drafts(self) -> None:
+        do_enable_drafts_syncing(self.user_profile)
+        action = lambda: do_disable_drafts_syncing(self.user_profile)
+        self.verify_action(action)

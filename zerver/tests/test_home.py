@@ -19,6 +19,7 @@ from zerver.lib.test_helpers import get_user_messages, queries_captured
 from zerver.lib.users import compute_show_invites_and_add_streams
 from zerver.models import (
     DefaultStream,
+    Draft,
     Realm,
     UserActivity,
     UserProfile,
@@ -57,11 +58,13 @@ class HomeTest(ZulipTestCase):
         "dense_mode",
         "desktop_icon_count_display",
         "development_environment",
+        "drafts",
         "email",
         "emojiset",
         "emojiset_choices",
         "enable_desktop_notifications",
         "enable_digest_emails",
+        "enable_drafts_synchronization",
         "enable_login_emails",
         "enable_offline_email_notifications",
         "enable_offline_push_notifications",
@@ -252,7 +255,7 @@ class HomeTest(ZulipTestCase):
         self.assertEqual(set(result["Cache-Control"].split(", ")),
                          {"must-revalidate", "no-store", "no-cache"})
 
-        self.assert_length(queries, 39)
+        self.assert_length(queries, 40)
         self.assert_length(cache_mock.call_args_list, 5)
 
         html = result.content.decode('utf-8')
@@ -332,7 +335,7 @@ class HomeTest(ZulipTestCase):
                 result = self._get_home_page()
                 self.check_rendered_logged_in_app(result)
                 self.assert_length(cache_mock.call_args_list, 6)
-            self.assert_length(queries, 36)
+            self.assert_length(queries, 37)
 
     def test_num_queries_with_streams(self) -> None:
         main_user = self.example_user('hamlet')
@@ -363,7 +366,7 @@ class HomeTest(ZulipTestCase):
         with queries_captured() as queries2:
             result = self._get_home_page()
 
-        self.assert_length(queries2, 34)
+        self.assert_length(queries2, 35)
 
         # Do a sanity check that our new streams were in the payload.
         html = result.content.decode('utf-8')
@@ -1054,3 +1057,31 @@ class HomeTest(ZulipTestCase):
         show_invites, show_add_streams = compute_show_invites_and_add_streams(None)
         self.assertEqual(show_invites, False)
         self.assertEqual(show_add_streams, False)
+
+    def test_limit_drafts(self) -> None:
+        draft_objects = []
+        hamlet = self.example_user("hamlet")
+        base_time = timezone_now()
+
+        step_value = timedelta(seconds=1)
+        # Create 11 drafts.
+        for i in range(0, 11):
+            draft_objects.append(Draft(
+                user_profile = hamlet,
+                recipient = None,
+                topic = "",
+                content = "sample draft",
+                last_edit_time = base_time + i * step_value
+            ))
+        Draft.objects.bulk_create(draft_objects)
+
+        # Now fetch the drafts part of the initial state and make sure
+        # that we only got back 10. No more. Also make sure that the
+        # drafts returned are the most recently edited ones.
+        self.login("hamlet")
+        page_params = self._get_page_params(self._get_home_page())
+        self.assertEqual(page_params["enable_drafts_synchronization"], True)
+        self.assertEqual(len(page_params["drafts"]), 10)
+        self.assertEqual(Draft.objects.count(), 11)
+        for draft in page_params["drafts"]:
+            self.assertNotEqual(draft["timestamp"], base_time)

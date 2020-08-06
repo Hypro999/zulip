@@ -50,6 +50,7 @@ from zerver.lib.users import get_cross_realm_dicts, get_raw_user_data, is_admini
 from zerver.models import (
     Client,
     CustomProfileField,
+    Draft,
     Message,
     Realm,
     Stream,
@@ -146,6 +147,17 @@ def fetch_initial_state_data(
             state['max_message_id'] = user_messages[0]['message_id']
         else:
             state['max_message_id'] = -1
+
+    if want('drafts'):
+        # Note: if a user ever disables synching drafts then all of
+        # their old drafts stored on the server will be deleted and
+        # simply retained in local storage. In which case user_drafts
+        # would just be an empty queryset.
+        user_draft_objects = Draft.objects.filter(user_profile=user_profile) \
+            .order_by('-last_edit_time')[:10]
+        user_draft_dicts = [draft.to_dict() for draft in user_draft_objects]
+        state['enable_drafts_synchronization'] = False if user_profile is None else user_profile.enable_drafts_synchronization
+        state['drafts'] = user_draft_dicts
 
     if want('muted_topics'):
         state['muted_topics'] = [] if user_profile is None else get_topic_mutes(user_profile)
@@ -469,6 +481,30 @@ def apply_event(state: Dict[str, Any],
             if event['message']['stream_id'] == stream_dict['stream_id']:
                 if stream_dict['first_message_id'] is None:
                     stream_dict['first_message_id'] = event['message']['id']
+
+    elif event["type"] == "drafts":
+        if event["op"] == "add":
+            state["drafts"].extend(event["drafts"])
+
+        else:
+            # We have to perform a linear search for the draft that
+            # was either edited or removed since we have a list
+            # ordered by the last edited timestamp and not id.
+            draft_state_idx = None
+            for idx, draft in enumerate(state["drafts"]):
+                if draft["id"] == event["draft"]["id"]:
+                    draft_state_idx = idx
+                    break
+            assert(draft_state_idx is not None)
+
+            if event["op"] == "update":
+                state["drafts"][draft_state_idx] = event["draft"]
+
+            elif event["op"] == "remove":
+                del state["drafts"][draft_state_idx]
+
+    elif event["type"] == "update_draft_settings":
+        state["enable_drafts_synchronization"] = event["setting"]
 
     elif event['type'] == "hotspots":
         state['hotspots'] = event['hotspots']

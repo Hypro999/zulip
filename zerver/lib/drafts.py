@@ -24,6 +24,7 @@ from zerver.lib.validator import (
     check_union,
 )
 from zerver.models import Draft, UserProfile
+from zerver.tornado.django_api import send_event
 
 VALID_DRAFT_TYPES: Set[str] = {"", "private", "stream"}
 
@@ -111,6 +112,16 @@ def do_create_drafts(draft_dicts: List[Dict[str, Any]], user_profile: UserProfil
         ))
 
     created_draft_objects = Draft.objects.bulk_create(draft_objects)
+
+    event = {
+        "type": "drafts",
+        "op": "add",
+        "drafts": [
+            draft.to_dict() for draft in created_draft_objects
+        ]
+    }
+    send_event(user_profile.realm, event, [user_profile.id])
+
     return created_draft_objects
 
 def do_edit_draft(draft_id: int, draft_dict: Dict[str, Any], user_profile: UserProfile) -> None:
@@ -128,6 +139,14 @@ def do_edit_draft(draft_id: int, draft_dict: Dict[str, Any], user_profile: UserP
     draft_object.recipient = valid_draft_dict["recipient"]
     draft_object.last_edit_time = valid_draft_dict["last_edit_time"]
     draft_object.save()
+
+    event = {
+        "type": "drafts",
+        "op": "update",
+        "draft": draft_object.to_dict()
+    }
+    send_event(user_profile.realm, event, [user_profile.id])
+
     return
 
 def do_delete_draft(draft_id: int, user_profile: UserProfile) -> None:
@@ -137,13 +156,29 @@ def do_delete_draft(draft_id: int, user_profile: UserProfile) -> None:
     except Draft.DoesNotExist:
         raise JsonableError(_("Draft does not exist"))
 
+    draft_dict = draft_object.to_dict()
     draft_object.delete()
+
+    event = {
+        "type": "drafts",
+        "op": "remove",
+        "draft": draft_dict
+    }
+    send_event(user_profile.realm, event, [user_profile.id])
+
     return
 
 def do_enable_drafts_syncing(user_profile: UserProfile) -> None:
     """ Set the user's enable_drafts_synchronization field to True """
     user_profile.enable_drafts_synchronization = True
     user_profile.save(update_fields=["enable_drafts_synchronization"])
+    event = {
+        "type": "update_draft_settings",
+        "user": user_profile.email,
+        "setting_name": "enable_drafts_synchronization",
+        "setting": True
+    }
+    send_event(user_profile.realm, event, [user_profile.id])
     return
 
 def do_disable_drafts_syncing(user_profile: UserProfile) -> None:
@@ -151,5 +186,18 @@ def do_disable_drafts_syncing(user_profile: UserProfile) -> None:
     all of their currently synced drafts from the backend. """
     user_profile.enable_drafts_synchronization = False
     user_profile.save(update_fields=["enable_drafts_synchronization"])
+
+    # Delete all of the drafts from the backend but don't send delete events
+    # for them since all that's happened is that we stopped syncing changes,
+    # not deleted every previously synced draft - to do that use the DELETE
+    # endpoint.
     Draft.objects.filter(user_profile=user_profile).delete()
+
+    event = {
+        "type": "update_draft_settings",
+        "user": user_profile.email,
+        "setting_name": "enable_drafts_synchronization",
+        "setting": False
+    }
+    send_event(user_profile.realm, event, [user_profile.id])
     return

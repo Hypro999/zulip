@@ -734,13 +734,14 @@ class FetchQueriesTest(ZulipTestCase):
                     realm=user.realm,
                 )
 
-        self.assert_length(queries, 29)
+        self.assert_length(queries, 30)
 
         expected_counts = dict(
             alert_words=1,
             custom_profile_fields=1,
             default_streams=1,
             default_stream_groups=1,
+            drafts=1,
             hotspots=0,
             message=1,
             muted_topics=1,
