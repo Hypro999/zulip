@@ -32,6 +32,7 @@ from zerver.lib.actions import (
     validate_email_is_valid,
 )
 from zerver.lib.avatar import avatar_url
+from zerver.lib.drafts import do_disable_drafts_syncing, do_enable_drafts_syncing
 from zerver.lib.email_validation import (
     get_realm_email_validator,
     validate_email_not_already_in_realm,
@@ -43,7 +44,7 @@ from zerver.lib.response import json_error, json_success
 from zerver.lib.send_email import FromAddress, send_email
 from zerver.lib.upload import upload_avatar_image
 from zerver.lib.validator import check_bool, check_int, check_int_in, check_string, check_string_in
-from zerver.models import Draft, UserProfile, avatar_changes_disabled, name_changes_disabled
+from zerver.models import UserProfile, avatar_changes_disabled, name_changes_disabled
 from zproject.backends import check_password_strength, email_belongs_to_ldap
 
 AVATAR_CHANGES_DISABLED_ERROR = ugettext_lazy("Avatar changes are disabled in this organization.")
@@ -291,10 +292,9 @@ def change_enter_sends(request: HttpRequest, user_profile: UserProfile,
 def json_change_draft_settings(request: HttpRequest, user_profile: UserProfile,
                                enable_syncing: Optional[bool]=REQ(validator=check_bool, default=None),
                                ) -> HttpResponse:
-    if enable_syncing is not None:
-        user_profile.enable_drafts_synchronization = enable_syncing
-        user_profile.save(update_fields=["enable_drafts_synchronization"])
-        if enable_syncing is False:
-            Draft.objects.filter(user_profile=user_profile).delete()
+    if enable_syncing is True:
+        do_enable_drafts_syncing(user_profile)
+    if enable_syncing is False:
+        do_disable_drafts_syncing(user_profile)
 
     return json_success()
