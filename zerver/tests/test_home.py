@@ -1082,6 +1082,6 @@ class HomeTest(ZulipTestCase):
         page_params = self._get_page_params(self._get_home_page())
         self.assertEqual(page_params["enable_drafts_synchronization"], True)
         self.assertEqual(len(page_params["drafts"]), 10)
-        self.assertEqual(Draft.objects.count(), 11)
+        self.assertEqual(Draft.objects.count(), 13)  # +2 for what's already in the test DB.
         for draft in page_params["drafts"]:
             self.assertNotEqual(draft["timestamp"], base_time)

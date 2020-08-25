@@ -15,6 +15,14 @@
 * [Update personal message flags](/api/update-message-flags)
 * [Mark messages as read in bulk](/api/mark-all-as-read)
 
+#### Drafts
+
+* [Create drafts](/api/create-drafts)
+* [Fetch drafts](/api/get-drafts)
+* [Edit a draft](/api/edit-draft)
+* [Delete a draft](/api/delete-draft)
+* [Change drafts settings](/api/change-drafts-settings)
+
 #### Streams
 
 * [Get subscribed streams](/api/get-subscriptions)

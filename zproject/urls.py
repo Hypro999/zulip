@@ -355,15 +355,11 @@ v1_api_and_json_patterns = [
 
     # Endpoints for syncing drafts.
     rest_path('drafts',
-              GET=(fetch_drafts,
-                   {'intentionally_undocumented'}),
-              POST=(create_drafts,
-                    {'intentionally_undocumented'})),
+              GET=fetch_drafts,
+              POST=create_drafts),
     rest_path('drafts/<int:draft_id>',
-              PATCH=(edit_draft,
-                     {'intentionally_undocumented'}),
-              DELETE=(delete_draft,
-                      {'intentionally_undocumented'})),
+              PATCH=edit_draft,
+              DELETE=delete_draft),
 
     # messages -> zerver.views.message*
     # GET returns messages, possibly filtered, POST sends a message

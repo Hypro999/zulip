@@ -440,6 +440,8 @@ class UserDraftSettingsTests(ZulipTestCase):
         aaron = self.example_user("aaron")
         self.assertTrue(aaron.enable_drafts_synchronization)
 
+        initial_count = Draft.objects.count()
+
         # Create some drafts. These should be deleted once the aaron disables
         # syncing drafts.
         visible_stream_id = self.get_stream_id(self.get_streams(aaron)[0])
@@ -462,11 +464,11 @@ class UserDraftSettingsTests(ZulipTestCase):
         payload = {"drafts": orjson.dumps(draft_dicts).decode()}
         resp = self.api_post(aaron, "/api/v1/drafts", payload)
         self.assert_json_success(resp)
-        self.assertEqual(Draft.objects.count(), 2)
+        self.assertEqual(Draft.objects.count() - initial_count, 2)
 
         payload = {"enable_syncing": orjson.dumps(False).decode()}
         resp = self.api_patch(aaron, "/api/v1/settings/drafts", payload)
         self.assert_json_success(resp)
         aaron = self.example_user("aaron")
         self.assertFalse(aaron.enable_drafts_synchronization)
-        self.assertEqual(Draft.objects.count(), 0)
+        self.assertEqual(Draft.objects.count() - initial_count, 0)
