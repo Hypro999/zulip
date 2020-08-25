@@ -1031,6 +1031,9 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     # Hours to wait before sending another email to a user
     EMAIL_REMINDER_WAITPERIOD = 24
 
+    # Whether or not the user wants to sync their drafts.
+    enable_drafts_synchronization = models.BooleanField(default=True)
+
     # Default streams for some deprecated/legacy classes of bot users.
     default_sending_stream: Optional["Stream"] = models.ForeignKey(
         "zerver.Stream", null=True, related_name="+", on_delete=CASCADE,
