@@ -10,6 +10,23 @@ below features are supported.
 
 ## Changes in Zulip 4.0
 
+**Feature level 36**
+
+* [`GET /drafts`](/api/get-drafts): Added new endpoint to fetch user's
+  synced drafts from the server.
+
+* [`POST /drafts`](/api/create-drafts): Added new endpoint to create
+  drafts when syncing has been enabled.
+
+* [`PATCH /drafts/{draft_id}`](/api/edit-draft): Added new endpoint
+  to edit a draft already owned by the user.
+
+* [`DELETE /drafts/{draft_id}`](/api/delete-draft): Added new endpoint
+  to delete a draft already owned by the user.
+
+* [`PATCH /settings/drafts`](/api/change-drafts-settings): Add a new
+  endpoint to allow a user to change their draft sync settings.
+
 **Feature level 35**
 
 * The peer_add and peer_remove subscription events now have plural
